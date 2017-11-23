@@ -1,0 +1,204 @@
+---
+title: "Complaint & Inspection Dashboards"
+author: "DOB Analytics"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    
+    social: menu
+    source_code: embed
+---
+
+```{r setup, include=FALSE}
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(lubridate)
+library(tidyr)
+library(plotly)
+library(dplyr)
+library(flexdashboard)
+library(shiny)
+library(DT)
+
+
+
+## Read in, manipulate dataframe and run statistics
+mydata<-read.csv("complaints.csv", header=T, sep=',')
+names(mydata)<- c("Complaint.Date", "Inspection.Date", "Complaint.Type", "Complaint.Number", "Complaint.Category", "Complaint.Description", "Community.Board", "Borough", "BIN", "Count.Inspected", "with.Access", "No.Access", "with.Violations", "No.Violations", "Count.Complaints", "Inspection.Sequence", "Latitude", "Longitude", "House.Number", "Street.Name", "Disposition.Code", "Dispostion.Description")
+mydata$Address <- paste(mydata$House.Number," ",mydata$Street.Name)
+IC <- subset(mydata, Complaint.Type == c('Illegal Conversion'))
+IC$Complaint.Date <- mdy(IC$Complaint.Date)
+IC$Complaint.Date<- floor_date(IC$Complaint.Date, "month")
+```
+
+
+Illegal Conversions
+=======================================================================
+
+row
+-----------------------------------------------------------------------
+### Current Data as of
+```{r}
+today <- Sys.Date()
+valueBox(today, icon = "warning")
+
+```
+
+
+### Total Complaints
+
+```{r}
+aa<- NROW(IC)
+valueBox(aa, icon="fa-thumbs-down", color="success")
+
+
+```
+
+### Test 1
+```{r}
+today <- Sys.Date()
+valueBox(today, icon = "primary")
+
+```
+
+### Test 2
+```{r}
+today <- Sys.Date()
+valueBox(today, icon = "fa-pencil")
+
+```
+
+### Test 3
+```{r}
+today <- Sys.Date()
+valueBox(today, icon = "fa-pencil")
+
+```
+
+row {data-height=700}
+-----------------------------------------------------------------------
+
+### Total Complaints
+
+```{r}
+## Read in, manipulate dataframe and run statistics
+mydata3<- read.csv("sheds.csv", header=T, sep=',')
+
+x<- mydata3
+x$Longitude.Point = as.numeric(as.character(x$Longitude.Point))
+x$Latitude.Point = as.numeric(as.character(x$Latitude.Point))
+x$Age = as.numeric(as.character(x$Age))
+Sys.setenv('MAPBOX_TOKEN' = 'pk.eyJ1IjoidGltb3RoeW1hcnRpbjc2IiwiYSI6ImFpMWoyWDQifQ.UFnI-Tun673bAdqSFpTKWA')
+p <- x %>%
+plot_mapbox(lat = ~Latitude.Point, lon = ~Longitude.Point, mode = 'scattermapbox', color=~Age, text=~paste(x$Street.Name, x$Borough.Name, 'Age (days):',round(x$Age,1),  sep = "<br>"), hoverinfo="text") %>%
+add_markers(y=~Latitude.Point, x=~Longitude.Point, color=~Age, colors = c("#9ecae1", "#4292c6", "#2171b5", "#08519c", "#06214A" ),size=~Age, marker=list(sizeref=0.5)) %>%
+config(displayModeBar = F)%>%
+layout(title="", mapbox = list(style='light', zoom = 12, center = list(lat = ~(40.747458), lon = ~(-73.960991))))
+p
+
+```
+
+### geom_smooth Linear Regression
+
+```{r}
+## Borough Graph
+mydata<-read.csv("complaints.csv", header=T, sep=',')
+names(mydata)<- c("Complaint.Date", "Inspection.Date", "Complaint.Type", "Complaint.Number", "Complaint.Category", "Complaint.Description", "Community.Board", "Borough", "BIN", "Count.Inspected", "with.Access", "No.Access", "with.Violations", "No.Violations", "Count.Complaints", "Inspection.Sequence", "Latitude", "Longitude", "House.Number", "Street.Name", "Disposition.Code", "Dispostion.Description")
+mydata$Address <- paste(mydata$House.Number," ",mydata$Street.Name)
+IC <- subset(mydata, Complaint.Type == c('Illegal Conversion'))
+IC$Complaint.Date <- mdy(IC$Complaint.Date)
+IC$Complaint.Date<- floor_date(IC$Complaint.Date, "month")
+IC_Complaints<- aggregate(Count.Complaints ~ Complaint.Date, IC, sum)
+x <- list(title = "")
+y <- list(title = "")
+p <- plot_ly(IC_Complaints, x = ~Complaint.Date, y = ~Count.Complaints, type = 'bar', hoverinfo='text', opacity=0.8, text = ~paste('Date:', format(Complaint.Date, '%b-%y'),'<br>Total:', Count.Complaints))  %>%  layout(xaxis = x, yaxis = y, showlegend = FALSE) %>%  config(displayModeBar = F)
+p
+
+```
+
+Column {data-width=400}
+-------------------------------------
+### geom_smooth Linear Regression
+
+```{r}
+## Borough Graph
+mydata<-read.csv("complaints.csv", header=T, sep=',')
+names(mydata)<- c("Complaint.Date", "Inspection.Date", "Complaint.Type", "Complaint.Number", "Complaint.Category", "Complaint.Description", "Community.Board", "Borough", "BIN", "Count.Inspected", "with.Access", "No.Access", "with.Violations", "No.Violations", "Count.Complaints", "Inspection.Sequence", "Latitude", "Longitude", "House.Number", "Street.Name", "Disposition.Code", "Dispostion.Description")
+mydata$Address <- paste(mydata$House.Number," ",mydata$Street.Name)
+IC <- subset(mydata, Complaint.Type == c('Illegal Conversion'))
+IC$Complaint.Date <- mdy(IC$Complaint.Date)
+IC$Complaint.Date<- floor_date(IC$Complaint.Date, "month")
+IC_Complaints<- aggregate(Count.Complaints ~ Complaint.Date, IC, sum)
+x <- list(title = "")
+y <- list(title = "")
+p <- plot_ly(IC_Complaints, x = ~Complaint.Date, y = ~Count.Complaints, type = 'bar', hoverinfo='text', opacity=0.8, text = ~paste('Date:', format(Complaint.Date, '%b-%y'),'<br>Total:', Count.Complaints))  %>%  layout(xaxis = x, yaxis = y, showlegend = FALSE) %>%  config(displayModeBar = F)
+p
+
+```
+
+### geom_smooth with Loess Smoothed Fit
+
+```{r}
+IC$Community.Board <- as.factor(IC$Community.Board)
+IC_CMBD<- aggregate(Count.Complaints ~ Community.Board, IC, sum)
+IC_CMBD<- IC_CMBD[with(IC_CMBD,order(-Count.Complaints)),]
+IC_CMBD<- IC_CMBD[1:10,]
+IC_CMBD$Community.Board <- factor(IC_CMBD$Community.Board, levels = unique(IC_CMBD$Community.Board), ordered = TRUE)
+x <- list(title = "Community Board")
+IC_CMBD_Graph<- plot_ly(IC_CMBD, x = ~Community.Board, y = ~Count.Complaints, type = 'bar', opacity=0.8, hoverinfo='text', text= ~paste('CB:', Community.Board, '<br>Total:', Count.Complaints)) %>%  layout(xaxis = x, yaxis = y, showlegend = FALSE) %>%  config(displayModeBar = F)
+IC_CMBD_Graph
+
+```
+
+
+-----------------------------------------------------------------------
+
+### geom_smooth with Loess Smoothed Fit
+
+```{r}
+IC$Community.Board <- as.factor(IC$Community.Board)
+IC_CMBD<- aggregate(Count.Complaints ~ Community.Board, IC, sum)
+IC_CMBD<- IC_CMBD[with(IC_CMBD,order(-Count.Complaints)),]
+IC_CMBD<- IC_CMBD[1:10,]
+IC_CMBD$Community.Board <- factor(IC_CMBD$Community.Board, levels = unique(IC_CMBD$Community.Board), ordered = TRUE)
+x <- list(title = "Community Board")
+IC_CMBD_Graph<- plot_ly(IC_CMBD, x = ~Community.Board, y = ~Count.Complaints, type = 'bar', opacity=0.8, hoverinfo='text', text= ~paste('CB:', Community.Board, '<br>Total:', Count.Complaints)) %>%  layout(xaxis = x, yaxis = y, showlegend = FALSE) %>%  config(displayModeBar = F)
+IC_CMBD_Graph
+
+```
+
+geom_density
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+### stat_density Example
+
+```{r}
+
+```
+
+### Add Conditional Density Curves to Plot
+
+```{r}
+
+```
+
+Row
+-----------------------------------------------------------------------
+
+### geom_density and facet_wrap Together
+
+```{r}
+
+
+```
+
+### Density and Scatterplot Overlay Using geom_density
+
+```{r}
+
+
+```
